@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Glasses Captions</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; color: #fff;
+                 font-family: -apple-system, "Segoe UI", Roboto, sans-serif; }
+    #bar { display: flex; gap: 8px; padding: 8px; }
+    #bar input { flex: 1; padding: 8px; font-size: 16px; }
+    #player { width: 320px; height: 180px; margin: 0 auto; }
+    #caption { padding: 24px; font-size: 6vw; line-height: 1.3;
+               text-align: center; min-height: 40%; }
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <input id="videoUrl" placeholder="YouTube URL or ID" />
+    <button onclick="load()">Load</button>
+  </div>
+  <div id="player"></div>
+  <div id="caption"></div>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    let player = null, segments = [], lastIdx = -2, timer = null;
+    const captionEl = document.getElementById("caption");
+
+    async function load() {
+      const url = document.getElementById("videoUrl").value.trim();
+      if (!url) return;
+      const res = await fetch("/api/captions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json();
+      if (!res.ok) { captionEl.textContent = data.error; return; }
+
+      segments = data.segments;
+      lastIdx = -2;
+
+      if (player) { player.loadVideoById(data.video_id); }
+      else {
+        player = new YT.Player("player", {
+          videoId: data.video_id,
+          width: 320, height: 180,
+          playerVars: { playsinline: 1 }
+        });
+      }
+      clearInterval(timer);
+      timer = setInterval(tick, 100);
+    }
+
+    // last segment whose start time is <= t
+    function findIndex(t) {
+      let lo = 0, hi = segments.length - 1, ans = -1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (segments[mid].seconds <= t) { ans = mid; lo = mid + 1; }
+        else hi = mid - 1;
+      }
+      return ans;
+    }
+
+    function tick() {
+      if (!player || !player.getCurrentTime) return;
+      const t = player.getCurrentTime();
+      let i = findIndex(t);
+      // clear the caption once the line has ended
+      if (i >= 0 && t > segments[i].seconds + segments[i].duration) i = -1;
+      if (i === lastIdx) return;
+      lastIdx = i;
+      captionEl.textContent = i >= 0 ? segments[i].text : "";
+    }
+  </script>
+</body>
+</html>
