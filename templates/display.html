@@ -18,14 +18,13 @@
        stays put when the second line appears or disappears */
     #captions {
       width: 100%;
-      min-height: 50vh;
       box-sizing: border-box;
-      padding: 4vw;
+      padding: 25vh 4vw 4vh 25vw;
       text-align: left;
     }
     .line { line-height: 0.8; white-space: pre-line; }
-    #line0 { font-size: var(--size, 1.5vw); color: #fff; }
-    #line1 { font-size: var(--size, 1.5vw); color: #ddd; margin-top: 0.6em; }
+    #line0 { font-size: var(--size, 1.8vw); color: #fff; }
+    #line1 { font-size: var(--size, 1.8vw); color: #ddd; margin-top: 5px; }
 
     #status { position: fixed; top: 40%; width: 100%; text-align: center;
               color: #444; font-size: 2vw; }
@@ -64,6 +63,8 @@
     if (size1 > 0) document.documentElement.style.setProperty("--size", size1 + "vw");
     if (size2 > 0) document.documentElement.style.setProperty("--size2", size2 + "vw");
 
+    const DELAY = 0.5;  // seconds; raise it if captions still appear too early
+
     let tracks = [];            // [{lang, segments, ...}, ...] in display order
     let lastIdx = [-2, -2];     // last shown segment index per line
     let aligned = [];           // aligned[k][i] = cue in track k matching track 0's cue i
@@ -72,7 +73,7 @@
     let retryAfter = 0;
     let pollCount = 0, lastPollAt = 0, lastError = "";
     // Last known playback state, plus when we received it
-    let base = { t: 0, playing: false, at: performance.now() };
+    let base = { t: 0, playing: false, rate: 1, at: performance.now() };
 
     async function loadTracks(id) {
       loading = true;
@@ -104,7 +105,7 @@
     async function poll() {
       try {
         const s = await (await fetch("/api/state", { cache: "no-store" })).json();
-        base = { t: s.t, playing: s.playing, at: performance.now() };
+        base = { t: s.t, playing: s.playing, rate: s.rate || 1, at: performance.now() };
         pollCount++;
         lastPollAt = performance.now();
         lastError = "";
@@ -153,7 +154,7 @@
 
     // Between polls, advance the clock locally so captions stay smooth
     function render() {
-      const t = base.t + (base.playing ? (performance.now() - base.at) / 1000 : 0);
+      const t = base.t + (base.playing ? ((performance.now() - base.at) / 1000) * base.rate : 0) - DELAY;
 
       if (videoId) {
         // Current cue of the first track, needed in sync mode

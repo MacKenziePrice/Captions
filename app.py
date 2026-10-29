@@ -24,7 +24,7 @@ PARTIAL_CACHE_SECONDS = 120
 caption_cache = {}   # video_id -> (expires_at or None, result)
 
 # Shared playback state: the controller page writes it, the display page reads it
-playback = {"video_id": None, "t": 0.0, "playing": False}
+playback = {"video_id": None, "t": 0.0, "playing": False, "rate": 1.0}
 
 
 def extract_video_id(url_or_id):
@@ -265,6 +265,7 @@ def playback_state():
             video_id=d.get("video_id"),
             t=float(d.get("t", 0)),
             playing=bool(d.get("playing")),
+            rate=float(d.get("rate", 1.0)),
         )
         return jsonify(ok=True)
     return jsonify(playback)

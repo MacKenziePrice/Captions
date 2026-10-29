@@ -230,7 +230,8 @@
         body: JSON.stringify({
           video_id: currentId,
           t: player.getCurrentTime(),
-          playing: player.getPlayerState() === 1
+          playing: player.getPlayerState() === 1,
+          rate: player.getPlaybackRate()
         })
       }).catch(() => {});
     }
